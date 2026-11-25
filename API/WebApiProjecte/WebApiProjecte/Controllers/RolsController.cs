@@ -2,23 +2,22 @@
 using Microsoft.Data.SqlClient;
 using WebApiProjecte.Models;
 
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-
 namespace WebApiProjecte.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class RolsController : ControllerBase
+    public class PartidasController : ControllerBase
     {
-        // GET: api/<RolsController>
+        // GET: api/Partidas
         [HttpGet]
-        public ActionResult<IEnumerable<Rol>> Get()
+        public ActionResult<IEnumerable<Partida>> Get()
         {
-            List<Rol> rols = new List<Rol>();
+            List<Partida> partidas = new List<Partida>();
 
             try
             {
-                SqlCommand sqlCommand = new SqlCommand("SELECT id_rol, nombre_rol FROM roles", BD.Connexio);
+                string query = "SELECT id_partida, id_usuario, fecha_partida, duracion, nivel_dificultad, estrellas FROM partidas";
+                SqlCommand sqlCommand = new SqlCommand(query, BD.Connexio);
 
                 if (BD.Connexio.State != System.Data.ConnectionState.Open)
                 {
@@ -29,16 +28,20 @@ namespace WebApiProjecte.Controllers
 
                 while (reader.Read())
                 {
-                    Rol r = new Rol
+                    Partida p = new Partida
                     {
-                        Id_rol = Convert.ToInt32(reader["id_rol"]),
-                        Nombre_rol = reader["nombre_rol"].ToString() ?? string.Empty,
+                        Id_partida = Convert.ToInt32(reader["id_partida"]),
+                        Id_usuario = Convert.ToInt32(reader["id_usuario"]),
+                        Fecha_partida = Convert.ToDateTime(reader["fecha_partida"]),
+                        Duracion = Convert.ToInt32(reader["duracion"]),
+                        Nivel_dificultad = Convert.ToInt32(reader["nivel_dificultad"]),
+                        Estrellas = Convert.ToInt32(reader["estrellas"])
                     };
-                    rols.Add(r);
+                    partidas.Add(p);
                 }
 
                 reader.Close();
-                return Ok(rols);
+                return Ok(partidas);
             }
             catch (Exception ex)
             {
@@ -53,34 +56,15 @@ namespace WebApiProjecte.Controllers
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // GET api/<UsuarisController>/5
+        // GET: api/Partidas/5
         [HttpGet("{id}")]
-        public ActionResult<Rol> Get(int id)
+        public ActionResult<Partida> Get(int id)
         {
-            Rol? rol = null;
-
             try
             {
-                SqlCommand sqlCommand = new SqlCommand("SELECT id_rol, nombre_rol FROM roles WHERE id_rol = @Id_rol", BD.Connexio);
-                sqlCommand.Parameters.Clear();
-                sqlCommand.Parameters.AddWithValue("@Id_rol", id);
+                string query = "SELECT id_partida, id_usuario, fecha_partida, duracion, nivel_dificultad, estrellas FROM partidas WHERE id_partida = @id";
+                SqlCommand sqlCommand = new SqlCommand(query, BD.Connexio);
+                sqlCommand.Parameters.AddWithValue("@id", id);
 
                 if (BD.Connexio.State != System.Data.ConnectionState.Open)
                 {
@@ -91,21 +75,21 @@ namespace WebApiProjecte.Controllers
 
                 if (reader.Read())
                 {
-                    rol = new Rol
+                    Partida p = new Partida
                     {
-                        Id_rol = Convert.ToInt32(reader["id_rol"]),
-                        Nombre_rol = reader["nombre_rol"].ToString() ?? string.Empty,
+                        Id_partida = Convert.ToInt32(reader["id_partida"]),
+                        Id_usuario = Convert.ToInt32(reader["id_usuario"]),
+                        Fecha_partida = Convert.ToDateTime(reader["fecha_partida"]),
+                        Duracion = Convert.ToInt32(reader["duracion"]),
+                        Nivel_dificultad = Convert.ToInt32(reader["nivel_dificultad"]),
+                        Estrellas = Convert.ToInt32(reader["estrellas"])
                     };
+                    reader.Close();
+                    return Ok(p);
                 }
 
                 reader.Close();
-
-                if (rol == null)
-                {
-                    return NotFound(new { missatge = "No s'ha trobat cap usuari amb aquest ID" });
-                }
-
-                return Ok(rol);
+                return NotFound();
             }
             catch (Exception ex)
             {
@@ -120,5 +104,86 @@ namespace WebApiProjecte.Controllers
             }
         }
 
+        // POST: api/Partidas
+        [HttpPost]
+        public ActionResult<Partida> Post([FromBody] Partida partida)
+        {
+            try
+            {
+                // Evita error de SQL Server si no se envía fecha (DateTime mínimo en SQL es 1753)
+                if (partida.Fecha_partida < new DateTime(1753, 1, 1))
+                {
+                    partida.Fecha_partida = DateTime.Now;
+                }
+
+                string query = @"INSERT INTO partidas (id_usuario, fecha_partida, duracion, nivel_dificultad, estrellas) 
+                                 OUTPUT INSERTED.id_partida 
+                                 VALUES (@id_usuario, @fecha_partida, @duracion, @nivel_dificultad, @estrellas)";
+
+                SqlCommand sqlCommand = new SqlCommand(query, BD.Connexio);
+                sqlCommand.Parameters.AddWithValue("@id_usuario", partida.Id_usuario);
+                sqlCommand.Parameters.AddWithValue("@fecha_partida", partida.Fecha_partida);
+                sqlCommand.Parameters.AddWithValue("@duracion", partida.Duracion);
+                sqlCommand.Parameters.AddWithValue("@nivel_dificultad", partida.Nivel_dificultad);
+                sqlCommand.Parameters.AddWithValue("@estrellas", partida.Estrellas);
+
+                if (BD.Connexio.State != System.Data.ConnectionState.Open)
+                {
+                    BD.Connexio.Open();
+                }
+
+                partida.Id_partida = Convert.ToInt32(sqlCommand.ExecuteScalar());
+
+                return Ok(partida);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            finally
+            {
+                if (BD.Connexio.State == System.Data.ConnectionState.Open)
+                {
+                    BD.Connexio.Close();
+                }
+            }
+        }
+
+        // DELETE: api/Partidas/5
+        [HttpDelete("{id}")]
+        public ActionResult Delete(int id)
+        {
+            try
+            {
+                string query = "DELETE FROM partidas WHERE id_partida = @id";
+                SqlCommand sqlCommand = new SqlCommand(query, BD.Connexio);
+                sqlCommand.Parameters.AddWithValue("@id", id);
+
+                if (BD.Connexio.State != System.Data.ConnectionState.Open)
+                {
+                    BD.Connexio.Open();
+                }
+
+                int filasAfectadas = sqlCommand.ExecuteNonQuery();
+
+                if (filasAfectadas == 0)
+                {
+                    return NotFound();
+                }
+
+                return Ok(new { mensaje = "Partida eliminada correctamente" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            finally
+            {
+                if (BD.Connexio.State == System.Data.ConnectionState.Open)
+                {
+                    BD.Connexio.Close();
+                }
+            }
+        }
     }
 }

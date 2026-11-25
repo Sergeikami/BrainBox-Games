@@ -6,6 +6,6 @@ namespace WebApiProjecte.Models
     {
 
         public static SqlConnection Connexio { get; set; } = new SqlConnection
-            ("Server=51.83.192.177;Database=jocs_dam05;User Id=jocs_dam05;Password=Grupo5_;TrustServerCertificate=true;");
+            ("Server=51.83.192.177;Database=jocs_dam05;User Id=jocs_dam05;Password=jocs_dam05;TrustServerCertificate=true;");
     }
 }
